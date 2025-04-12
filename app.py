@@ -110,16 +110,12 @@ if st.session_state.session_files:
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
 
-        tasks = []
-        for session in selected_sessions:
-            for channel in channel_list:
-                session_path = os.path.join(st.session_state.temp_dir, session)
-                tasks.append(analyze_channel(session_path, channel, max_messages))
-
-        results_nested = loop.run_until_complete(asyncio.gather(*tasks))
-        for res in results_nested:
-            results.extend(res)
-        progress_bar.progress(1.0)
+        for i, session in enumerate(selected_sessions):
+            for j, channel in enumerate(channel_list):
+                task = analyze_channel(os.path.join(st.session_state.temp_dir, session), channel, max_messages)
+                task_result = loop.run_until_complete(task)
+                results.extend(task_result)
+                progress_bar.progress(((i * len(channel_list) + j + 1) / (len(selected_sessions) * len(channel_list))))
 
         if results:
             df = pd.DataFrame(results)
