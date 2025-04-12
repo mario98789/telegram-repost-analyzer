@@ -1,6 +1,6 @@
-import asyncio
 
 import streamlit as st
+import asyncio
 import pandas as pd
 import zipfile
 import tempfile
@@ -50,7 +50,6 @@ if st.session_state.session_files:
     # Ввод нескольких ссылок
     raw_links = st.text_area("Вставьте до 50 ссылок на Telegram-каналы (по одной на строке):")
     max_messages = st.number_input("Сколько сообщений анализировать:", min_value=10, max_value=1000, value=100)
-    min_subs = st.number_input("Минимальное количество подписчиков у оригинального канала:", min_value=0, value=1500)
     run_button = st.button("Запустить анализ")
 
     if run_button and raw_links and selected_sessions:
@@ -75,28 +74,28 @@ if st.session_state.session_files:
         status_text = st.empty()
         results = []
 
-        
+        async def analyze_channel(session_path, channel, limit):
+            session_name = os.path.splitext(os.path.basename(session_path))[0]
+            full_session_path = os.path.join(st.session_state.temp_dir, session_name)
+            client = TelegramClient(full_session_path, api_id=123456, api_hash="0123456789abcdef0123456789abcdef")
+            try:
+                await client.connect()
+                if not await client.is_user_authorized():
                     return []
-                                session_results = []
-                for message in client.iter_messages(channel, limit=limit):
+                session_results = []
+                async for message in client.iter_messages(channel, limit=limit):
                     if message.fwd_from and hasattr(message.fwd_from, 'from_id') and message.fwd_from.from_id:
                         if isinstance(message.fwd_from.from_id, PeerChannel):
                             original_channel_id = message.fwd_from.from_id.channel_id
                             try:
-                                original = client.get_entity(PeerChannel(original_channel_id))
+                                original = await client.get_entity(PeerChannel(original_channel_id))
                                 original_title = original.title
                                 original_link = f"https://t.me/{original.username}" if original.username else f"[Private Channel | ID: {original_channel_id}]"
 
-                                full_info = client(GetFullChannelRequest(original))
+                                full_info = await client(GetFullChannelRequest(original))
                                 participant_count = getattr(full_info.full_chat, 'participants_count', 0)
-                                if participant_count >= min_subs:
-                                    session_results.append({
-                                        "Оригинальный канал": original_title,
-                                        "Ссылка": original_link,
-                                        "Текст": message.text[:200] + ('...' if message.text and len(message.text) > 200 else ''),
-                                        "Дата": message.date.strftime("%Y-%m-%d %H:%M:%S"),
-                                        "Подписчики": participant_count
-                                    })
+                                if participant_count < 1500:
+                                    continue
 
                             except Exception:
                                 original_title = "Неизвестный канал"
@@ -113,10 +112,10 @@ if st.session_state.session_files:
             except Exception:
                 return []
             finally:
-                
+                await client.disconnect()
 
-        
-        
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
 
         tasks = []
         for session in selected_sessions:
@@ -124,7 +123,7 @@ if st.session_state.session_files:
                 session_path = os.path.join(st.session_state.temp_dir, session)
                 tasks.append(analyze_channel(session_path, channel, max_messages))
 
-        results_nested = [analyze_channel(session_path, channel, max_messages) for session_path, channel in tasks]
+        results_nested = loop.run_until_complete(asyncio.gather(*tasks))
         for res in results_nested:
             results.extend(res)
         progress_bar.progress(1.0)
@@ -150,48 +149,3 @@ if st.session_state.session_files:
             st.download_button("Скачать CSV", csv, "reposts.csv", "text/csv")
         else:
             st.warning("Репосты не найдены или произошли ошибки во всех сессиях.")
-
-def analyze_channel(session_path, channel, limit):
-    import asyncio
-    from telethon.sync import TelegramClient
-    from telethon.tl.functions.channels import GetFullChannelRequest
-    from telethon.tl.types import PeerChannel
-    from telethon.errors import SessionPasswordNeededError
-
-    session_name = os.path.splitext(os.path.basename(session_path))[0]
-    full_session_path = os.path.join(st.session_state.temp_dir, session_name)
-
-    try:
-        with TelegramClient(full_session_path, api_id=123456, api_hash="0123456789abcdef0123456789abcdef") as client:
-            if not client.is_user_authorized():
-                return []
-
-            session_results = []
-
-            for message in client.iter_messages(channel, limit=limit):
-                if message.fwd_from and hasattr(message.fwd_from, 'from_id') and message.fwd_from.from_id:
-                    if isinstance(message.fwd_from.from_id, PeerChannel):
-                        original_channel_id = message.fwd_from.from_id.channel_id
-                        try:
-                            original = client.get_entity(PeerChannel(original_channel_id))
-                            original_title = original.title
-                            original_link = f"https://t.me/{original.username}" if original.username else f"[Private Channel | ID: {original_channel_id}]"
-
-                            full_info = client(GetFullChannelRequest(original))
-                            participant_count = getattr(full_info.full_chat, 'participants_count', 0)
-
-                            if participant_count >= min_subs:
-                                session_results.append({
-                                    "Оригинальный канал": original_title,
-                                    "Ссылка": original_link,
-                                    "Текст": message.text[:200] + ('...' if message.text and len(message.text) > 200 else ''),
-                                    "Дата": message.date.strftime("%Y-%m-%d %H:%M:%S"),
-                                    "Подписчики": participant_count
-                                })
-                        except Exception:
-                            continue
-            return session_results
-    except SessionPasswordNeededError:
-        return []
-    except Exception:
-        return []
