@@ -84,7 +84,7 @@ if st.session_state.session_files:
             full_session_path = os.path.join(st.session_state.temp_dir, session_name)
             
             # Создаем клиент с пустыми API ID и hash (будут использоваться из сессии)
-            client = TelegramClient(full_session_path, api_id=1, api_hash="")
+            client = TelegramClient(full_session_path, api_id=123456, api_hash="0123456789abcdef0123456789abcdef")
             
             try:
                 await client.connect()
