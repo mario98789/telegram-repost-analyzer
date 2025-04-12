@@ -1,3 +1,4 @@
+import asyncio
 
 import streamlit as st
 import pandas as pd
@@ -77,6 +78,7 @@ if st.session_state.session_files:
         def analyze_channel(session_path, channel, limit):
             session_name = os.path.splitext(os.path.basename(session_path))[0]
             full_session_path = os.path.join(st.session_state.temp_dir, session_name)
+            asyncio.set_event_loop(asyncio.new_event_loop())
             client = TelegramClient(full_session_path, api_id=123456, api_hash="0123456789abcdef0123456789abcdef")
             try:
                 client.connect()
