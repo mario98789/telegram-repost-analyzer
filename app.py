@@ -1,4 +1,3 @@
-
 import streamlit as st
 import asyncio
 import pandas as pd
@@ -47,7 +46,6 @@ if st.session_state.session_files:
         default=st.session_state.session_files[:1]
     )
 
-    # Ввод нескольких ссылок
     raw_links = st.text_area("Вставьте до 50 ссылок на Telegram-каналы (по одной на строке):")
     max_messages = st.number_input("Сколько сообщений анализировать:", min_value=10, max_value=1000, value=100)
     run_button = st.button("Запустить анализ")
@@ -55,7 +53,6 @@ if st.session_state.session_files:
     if run_button and raw_links and selected_sessions:
         input_links = list(set([line.strip() for line in raw_links.splitlines() if line.strip()]))
 
-        # Нормализация username'ов
         def extract_channel_name(link):
             if link.startswith("https://t.me/"):
                 return link.split("https://t.me/")[1].split("/")[0]
@@ -72,7 +69,7 @@ if st.session_state.session_files:
 
         progress_bar = st.progress(0)
         status_text = st.empty()
-details_text = st.empty()
+        details_text = st.empty()
         results = []
 
         async def analyze_channel(session_path, channel, limit):
@@ -123,12 +120,11 @@ details_text = st.empty()
                 task = analyze_channel(os.path.join(st.session_state.temp_dir, session), channel, max_messages)
                 task_result = loop.run_until_complete(task)
                 results.extend(task_result)
-                
+
                 details_text.markdown(f"▶️ Анализируем канал: `{channel}` в сессии `{session}`...")
                 progress = (i * len(channel_list) + j + 1) / (len(selected_sessions) * len(channel_list))
                 progress_bar.progress(progress)
                 status_text.text(f"Готово: {int(progress * 100)}% ({i * len(channel_list) + j + 1} из {len(selected_sessions) * len(channel_list)})")
-
 
         if results:
             df = pd.DataFrame(results)
