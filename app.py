@@ -9,6 +9,7 @@ import shutil
 from telethon.sync import TelegramClient
 from telethon.tl.types import PeerChannel
 from telethon.errors import SessionPasswordNeededError
+from telethon.tl.functions.channels import GetFullChannelRequest
 
 st.set_page_config(page_title="Telegram Репост Анализатор", layout="wide")
 st.title("Telegram Репост Анализатор")
@@ -49,6 +50,7 @@ if st.session_state.session_files:
     # Ввод нескольких ссылок
     raw_links = st.text_area("Вставьте до 50 ссылок на Telegram-каналы (по одной на строке):")
     max_messages = st.number_input("Сколько сообщений анализировать:", min_value=10, max_value=1000, value=100)
+    min_subs = st.number_input("Минимальное количество подписчиков у оригинального канала:", min_value=0, value=1500)
     run_button = st.button("Запустить анализ")
 
     if run_button and raw_links and selected_sessions:
@@ -90,6 +92,18 @@ if st.session_state.session_files:
                                 original = await client.get_entity(PeerChannel(original_channel_id))
                                 original_title = original.title
                                 original_link = f"https://t.me/{original.username}" if original.username else f"[Private Channel | ID: {original_channel_id}]"
+
+                                full_info = await client(GetFullChannelRequest(original))
+                                participant_count = getattr(full_info.full_chat, 'participants_count', 0)
+                                if participant_count >= min_subs:
+                                    session_results.append({
+                                        "Оригинальный канал": original_title,
+                                        "Ссылка": original_link,
+                                        "Текст": message.text[:200] + ('...' if message.text and len(message.text) > 200 else ''),
+                                        "Дата": message.date.strftime("%Y-%m-%d %H:%M:%S"),
+                                        "Подписчики": participant_count
+                                    })
+
                             except Exception:
                                 original_title = "Неизвестный канал"
                                 original_link = f"[ID: {original_channel_id}]"
@@ -110,12 +124,16 @@ if st.session_state.session_files:
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
 
-        for i, session in enumerate(selected_sessions):
-            for j, channel in enumerate(channel_list):
-                task = analyze_channel(os.path.join(st.session_state.temp_dir, session), channel, max_messages)
-                task_result = loop.run_until_complete(task)
-                results.extend(task_result)
-                progress_bar.progress(((i * len(channel_list) + j + 1) / (len(selected_sessions) * len(channel_list))))
+        tasks = []
+        for session in selected_sessions:
+            for channel in channel_list:
+                session_path = os.path.join(st.session_state.temp_dir, session)
+                tasks.append(analyze_channel(session_path, channel, max_messages))
+
+        results_nested = loop.run_until_complete(asyncio.gather(*tasks))
+        for res in results_nested:
+            results.extend(res)
+        progress_bar.progress(1.0)
 
         if results:
             df = pd.DataFrame(results)
