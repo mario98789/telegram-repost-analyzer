@@ -65,8 +65,7 @@ if st.session_state.session_files:
     with col1:
         channel_input = st.text_input("Введите username или ссылку на Telegram-канал (например, @durov):")
     with col2:
-        max_messages = st.number_input("Сколько сообщений анализировать:", min_value=10, max_value=1000, 
-                                      max_value=1000, value=100)
+        max_messages = st.number_input("Сколько сообщений анализировать:", min_value=10, max_value=1000, value=100)
     
     # Кнопка запуска анализа
     run_button = st.button("Запустить анализ")
