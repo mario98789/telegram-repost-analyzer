@@ -9,6 +9,7 @@ import shutil
 from telethon.sync import TelegramClient
 from telethon.tl.types import PeerChannel
 from telethon.errors import SessionPasswordNeededError
+from telethon.tl.functions.channels import GetFullChannelRequest
 
 st.set_page_config(page_title="Telegram Репост Анализатор", layout="wide")
 st.title("Telegram Репост Анализатор")
@@ -90,6 +91,12 @@ if st.session_state.session_files:
                                 original = await client.get_entity(PeerChannel(original_channel_id))
                                 original_title = original.title
                                 original_link = f"https://t.me/{original.username}" if original.username else f"[Private Channel | ID: {original_channel_id}]"
+
+                                full_info = await client(GetFullChannelRequest(original))
+                                participant_count = getattr(full_info.full_chat, 'participants_count', 0)
+                                if participant_count < 1000:
+                                    continue
+
                             except Exception:
                                 original_title = "Неизвестный канал"
                                 original_link = f"[ID: {original_channel_id}]"
