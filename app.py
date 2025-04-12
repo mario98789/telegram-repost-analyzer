@@ -11,9 +11,10 @@ from telethon.errors import SessionPasswordNeededError
 from telethon.tl.functions.channels import GetFullChannelRequest
 
 st.set_page_config(page_title="Telegram Репост Анализатор", layout="wide")
-st.title("Telegram Репост Анализатор")
-st.markdown("Анализ репостов в Telegram каналах. Введите до 50 ссылок и получите список оригинальных каналов.")
+st.title("📡 Telegram Репост Анализатор")
+st.markdown("Анализ репостов в Telegram каналах. Загрузите `.session` файлы, вставьте ссылки на каналы и получите оригинальные источники репостов с количеством подписчиков.")
 
+# Временная директория и очистка
 if 'temp_dir' not in st.session_state:
     st.session_state.temp_dir = tempfile.mkdtemp()
     st.session_state.session_files = []
@@ -25,7 +26,8 @@ def cleanup():
 import atexit
 atexit.register(cleanup)
 
-uploaded_file = st.file_uploader("Загрузите ZIP-архив с .session файлами", type="zip")
+# Загрузка .session файлов
+uploaded_file = st.file_uploader("📂 Загрузите ZIP-архив с .session файлами", type="zip")
 
 if uploaded_file is not None:
     zip_path = os.path.join(st.session_state.temp_dir, "sessions.zip")
@@ -35,10 +37,11 @@ if uploaded_file is not None:
         zip_ref.extractall(st.session_state.temp_dir)
     st.session_state.session_files = [f for f in os.listdir(st.session_state.temp_dir) if f.endswith('.session')]
     if st.session_state.session_files:
-        st.success(f"Архив успешно распакован. Найдено {len(st.session_state.session_files)} .session файлов.")
+        st.success(f"✅ Найдено {len(st.session_state.session_files)} .session файлов.")
     else:
-        st.error("В архиве не найдено .session файлов.")
+        st.error("❌ .session файлы не найдены.")
 
+# Ввод ссылок и запуск анализа
 if st.session_state.session_files:
     selected_sessions = st.multiselect(
         "Выберите .session файлы для анализа",
@@ -46,9 +49,9 @@ if st.session_state.session_files:
         default=st.session_state.session_files[:1]
     )
 
-    raw_links = st.text_area("Вставьте до 50 ссылок на Telegram-каналы (по одной на строке):")
-    max_messages = st.number_input("Сколько сообщений анализировать:", min_value=10, max_value=1000, value=100)
-    run_button = st.button("Запустить анализ")
+    raw_links = st.text_area("📥 Вставьте ссылки на Telegram-каналы (по одной на строке, без лимита):")
+    max_messages = st.number_input("🔍 Сколько сообщений анализировать:", min_value=10, max_value=1000, value=100)
+    run_button = st.button("🚀 Запустить анализ")
 
     if run_button and raw_links and selected_sessions:
         input_links = list(set([line.strip() for line in raw_links.splitlines() if line.strip()]))
@@ -122,29 +125,29 @@ if st.session_state.session_files:
                 task_result = loop.run_until_complete(task)
                 results.extend(task_result)
 
-                details_text.markdown(f"▶️ Анализируем канал: {channel} в сессии {session}...")
+                details_text.markdown(f"🔄 Анализируем: `{channel}` в сессии `{session}`...")
                 progress = (i * len(channel_list) + j + 1) / (len(selected_sessions) * len(channel_list))
                 progress_bar.progress(progress)
-                status_text.text(f"Готово: {int(progress * 100)}% ({i * len(channel_list) + j + 1} из {len(selected_sessions) * len(channel_list)})")
+                status_text.text(f"Готово: {int(progress * 100)}%")
 
         if results:
             df = pd.DataFrame(results)
             df = df.drop_duplicates()
 
-            st.success(f"Найдено {len(df)} репостов из {df['Оригинальный канал'].nunique()} уникальных каналов.")
-            st.subheader("Топ каналов по количеству репостов")
+            st.success(f"🔍 Найдено {len(df)} репостов из {df['Оригинальный канал'].nunique()} уникальных каналов.")
+            st.subheader("📊 Топ каналов по количеству репостов")
             top_channels = df['Оригинальный канал'].value_counts().reset_index()
             top_channels.columns = ['Канал', 'Количество репостов']
             st.dataframe(top_channels.head(10))
 
-            st.subheader("Все найденные репосты")
+            st.subheader("🗂️ Все найденные репосты")
             st.dataframe(df)
 
-            st.subheader("📋 Чистый список оригинальных Telegram-ссылок")
+            st.subheader("📋 Ссылки на оригинальные Telegram-каналы")
             links_only = sorted(set([x for x in df['Ссылка'].tolist() if x.startswith("https://t.me/")]))
             st.code("\n".join(links_only), language='text')
 
             csv = df.to_csv(index=False).encode('utf-8')
-            st.download_button("Скачать CSV", csv, "reposts.csv", "text/csv")
+            st.download_button("⬇️ Скачать CSV", csv, "reposts.csv", "text/csv")
         else:
-            st.warning("Репосты не найдены или произошли ошибки во всех сессиях.")
+            st.warning("⚠️ Репосты не найдены или произошли ошибки во всех сессиях.")
