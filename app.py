@@ -1,3 +1,5 @@
+Интегрируй сюда весь дизайн и дай готовый код 
+
 import streamlit as st
 import asyncio
 import pandas as pd
@@ -122,7 +124,7 @@ if st.session_state.session_files:
                 task_result = loop.run_until_complete(task)
                 results.extend(task_result)
 
-                details_text.markdown(f"▶️ Анализируем канал: {channel} в сессии {session}...")
+                details_text.markdown(f"▶️ Анализируем канал: `{channel}` в сессии `{session}`...")
                 progress = (i * len(channel_list) + j + 1) / (len(selected_sessions) * len(channel_list))
                 progress_bar.progress(progress)
                 status_text.text(f"Готово: {int(progress * 100)}% ({i * len(channel_list) + j + 1} из {len(selected_sessions) * len(channel_list)})")
