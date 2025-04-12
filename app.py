@@ -53,7 +53,7 @@ if st.session_state.session_files:
     run_button = st.button("Запустить анализ")
 
     if run_button and raw_links and selected_sessions:
-        input_links = list(set([line.strip() for line in raw_links.splitlines() if line.strip()]))[:50]
+        input_links = list(set([line.strip() for line in raw_links.splitlines() if line.strip()]))
 
         # Нормализация username'ов
         def extract_channel_name(link):
@@ -72,6 +72,7 @@ if st.session_state.session_files:
 
         progress_bar = st.progress(0)
         status_text = st.empty()
+details_text = st.empty()
         results = []
 
         async def analyze_channel(session_path, channel, limit):
@@ -122,7 +123,12 @@ if st.session_state.session_files:
                 task = analyze_channel(os.path.join(st.session_state.temp_dir, session), channel, max_messages)
                 task_result = loop.run_until_complete(task)
                 results.extend(task_result)
-                progress_bar.progress(((i * len(channel_list) + j + 1) / (len(selected_sessions) * len(channel_list))))
+                
+                details_text.markdown(f"▶️ Анализируем канал: `{channel}` в сессии `{session}`...")
+                progress = (i * len(channel_list) + j + 1) / (len(selected_sessions) * len(channel_list))
+                progress_bar.progress(progress)
+                status_text.text(f"Готово: {int(progress * 100)}% ({i * len(channel_list) + j + 1} из {len(selected_sessions) * len(channel_list)})")
+
 
         if results:
             df = pd.DataFrame(results)
