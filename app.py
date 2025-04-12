@@ -157,7 +157,9 @@ if st.session_state.session_files:
             progress_bar.progress((i + 1) / len(selected_sessions) / 2)  # Первая половина прогресса - подготовка задач
         
         # Выполняем все задачи и собираем результаты
-        completed_tasks = await asyncio.gather(*tasks)
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        completed_tasks = loop.run_until_complete(asyncio.gather(*tasks))
         for i, session_results in enumerate(completed_tasks):
             results.extend(session_results)
             progress_bar.progress(0.5 + (i + 1) / len(selected_sessions) / 2)  # Вторая половина прогресса - обработка результатов
