@@ -92,15 +92,16 @@ if st.session_state.session_files:
 
                                 full_info = await client(GetFullChannelRequest(original))
                                 participant_count = getattr(full_info.full_chat, 'participants_count', 0)
-                                if participant_count < 1000:
-                                    continue
 
                             except Exception:
                                 original_title = "Неизвестный канал"
                                 original_link = f"[ID: {original_channel_id}]"
+                                participant_count = 0
+
                             session_results.append({
                                 "Оригинальный канал": original_title,
                                 "Ссылка": original_link,
+                                "Подписчики": participant_count,
                                 "Текст": message.text[:200] + ('...' if message.text and len(message.text) > 200 else ''),
                                 "Дата": message.date.strftime("%Y-%m-%d %H:%M:%S")
                             })
