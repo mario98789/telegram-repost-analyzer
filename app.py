@@ -79,12 +79,13 @@ if st.session_state.session_files:
             session_name = os.path.splitext(os.path.basename(session_path))[0]
             full_session_path = os.path.join(st.session_state.temp_dir, session_name)
             asyncio.set_event_loop(asyncio.new_event_loop())
-            client = TelegramClient(full_session_path, api_id=123456, api_hash="0123456789abcdef0123456789abcdef")
+            with TelegramClient(full_session_path, api_id=123456, api_hash="0123456789abcdef0123456789abcdef") as client:
             try:
-                client.connect()
+                
                 if not client.is_user_authorized():
+                return []
                     return []
-                session_results = []
+                                session_results = []
                 for message in client.iter_messages(channel, limit=limit):
                     if message.fwd_from and hasattr(message.fwd_from, 'from_id') and message.fwd_from.from_id:
                         if isinstance(message.fwd_from.from_id, PeerChannel):
@@ -120,7 +121,7 @@ if st.session_state.session_files:
             except Exception:
                 return []
             finally:
-                client.disconnect()
+                
 
         
         
